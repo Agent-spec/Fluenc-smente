@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl
 from urllib.parse import urlparse, parse_qs
 from youtube_transcript_api import YouTubeTranscriptApi
-import re
-import os
+
 import requests
+import re
 
 
 # =========================================================
@@ -29,20 +29,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# =========================================================
-# LIBRETRANSLATE
-# =========================================================
-
-LIBRETRANSLATE_URL = os.getenv(
-    "LIBRETRANSLATE_URL"
-)
-
-if not LIBRETRANSLATE_URL:
-    print(
-        "AVISO: LIBRETRANSLATE_URL não encontrada."
-    )
 
 
 # =========================================================
@@ -96,9 +82,9 @@ def youtube_id(url: str):
     host = parsed.netloc.lower()
 
 
-    # ---------------------------------------------
+    # -----------------------------------------------------
     # youtu.be
-    # ---------------------------------------------
+    # -----------------------------------------------------
 
     if "youtu.be" in host:
 
@@ -110,9 +96,9 @@ def youtube_id(url: str):
         )
 
 
-    # ---------------------------------------------
+    # -----------------------------------------------------
     # youtube.com
-    # ---------------------------------------------
+    # -----------------------------------------------------
 
     if "youtube.com" in host:
 
@@ -120,6 +106,8 @@ def youtube_id(url: str):
             parsed.query
         )
 
+
+        # youtube.com/watch?v=XXXX
 
         if "v" in query:
 
@@ -132,6 +120,9 @@ def youtube_id(url: str):
             .split("/")
         )
 
+
+        # youtube.com/shorts/XXXX
+        # youtube.com/embed/XXXX
 
         if (
             len(parts) >= 2
@@ -179,6 +170,10 @@ def merge_transcript(items):
 
     for item in items:
 
+        # -------------------------------------------------
+        # Pegar texto
+        # -------------------------------------------------
+
         text = clean_text(
 
             item.text
@@ -193,6 +188,10 @@ def merge_transcript(items):
             continue
 
 
+        # -------------------------------------------------
+        # Tempo inicial
+        # -------------------------------------------------
+
         item_start = float(
 
             item.start
@@ -202,6 +201,10 @@ def merge_transcript(items):
         )
 
 
+        # -------------------------------------------------
+        # Duração
+        # -------------------------------------------------
+
         item_duration = float(
 
             item.duration
@@ -210,6 +213,10 @@ def merge_transcript(items):
 
         )
 
+
+        # -------------------------------------------------
+        # Início da frase
+        # -------------------------------------------------
 
         if start is None:
 
@@ -223,9 +230,9 @@ def merge_transcript(items):
         combined = " ".join(buffer)
 
 
-        # -----------------------------------------
-        # Finaliza uma frase
-        # -----------------------------------------
+        # -------------------------------------------------
+        # Finalizar frase
+        # -------------------------------------------------
 
         if (
 
@@ -265,9 +272,9 @@ def merge_transcript(items):
             duration = 0.0
 
 
-    # ---------------------------------------------
-    # Última frase
-    # ---------------------------------------------
+    # =====================================================
+    # ÚLTIMA FRASE
+    # =====================================================
 
     if buffer:
 
@@ -306,14 +313,18 @@ def get_transcript(
     api = YouTubeTranscriptApi()
 
 
+    # -----------------------------------------------------
+    # Idioma principal
+    # -----------------------------------------------------
+
     languages = [
         language
     ]
 
 
-    # ---------------------------------------------
-    # Fallbacks de idioma
-    # ---------------------------------------------
+    # -----------------------------------------------------
+    # Fallbacks
+    # -----------------------------------------------------
 
     fallbacks = {
 
@@ -371,6 +382,10 @@ def get_transcript(
     )
 
 
+    # -----------------------------------------------------
+    # Remover duplicados
+    # -----------------------------------------------------
+
     languages = list(
         dict.fromkeys(
             languages
@@ -378,9 +393,9 @@ def get_transcript(
     )
 
 
-    # ---------------------------------------------
-    # Primeira tentativa
-    # ---------------------------------------------
+    # =====================================================
+    # PRIMEIRA TENTATIVA
+    # =====================================================
 
     try:
 
@@ -395,17 +410,17 @@ def get_transcript(
         return transcript
 
 
-    except Exception as first_error:
+    except Exception as error:
 
         print(
             "Primeira tentativa de transcrição falhou:",
-            first_error
+            error
         )
 
 
-    # ---------------------------------------------
-    # Segunda tentativa
-    # ---------------------------------------------
+    # =====================================================
+    # SEGUNDA TENTATIVA
+    # =====================================================
 
     try:
 
@@ -446,9 +461,9 @@ def get_transcript(
         )
 
 
-    # ---------------------------------------------
-    # Nenhuma legenda encontrada
-    # ---------------------------------------------
+    # =====================================================
+    # ERRO
+    # =====================================================
 
     raise HTTPException(
 
@@ -466,7 +481,128 @@ def get_transcript(
 
 
 # =========================================================
-# TRADUZIR COM LIBRETRANSLATE
+# TRADUZIR UMA FRASE COM MYMEMORY
+# =========================================================
+
+def translate_text(
+    text,
+    source_language,
+    target_language
+):
+
+    try:
+
+        response = requests.get(
+
+            "https://api.mymemory.translated.net/get",
+
+            params={
+
+                "q":
+                    text,
+
+                "langpair":
+                    f"{source_language}|{target_language}"
+
+            },
+
+            timeout=30
+
+        )
+
+
+        # -------------------------------------------------
+        # Verificar resposta HTTP
+        # -------------------------------------------------
+
+        response.raise_for_status()
+
+
+        data = response.json()
+
+
+        # -------------------------------------------------
+        # Verificar resposta da API
+        # -------------------------------------------------
+
+        response_data = data.get(
+            "responseData",
+            {}
+        )
+
+
+        translation = response_data.get(
+            "translatedText"
+        )
+
+
+        if not translation:
+
+            raise ValueError(
+                "MyMemory não retornou tradução."
+            )
+
+
+        return translation
+
+
+    except requests.exceptions.Timeout:
+
+        print(
+            "MyMemory demorou demais para responder."
+        )
+
+        raise HTTPException(
+
+            status_code=504,
+
+            detail=(
+                "O serviço de tradução "
+                "demorou demais para responder."
+            )
+
+        )
+
+
+    except requests.exceptions.RequestException as error:
+
+        print(
+            "Erro de conexão com MyMemory:",
+            error
+        )
+
+        raise HTTPException(
+
+            status_code=502,
+
+            detail=(
+                "Não foi possível conectar "
+                "ao serviço de tradução."
+            )
+
+        )
+
+
+    except Exception as error:
+
+        print(
+            "Erro na tradução:",
+            error
+        )
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=(
+                "Erro ao traduzir as legendas."
+            )
+
+        )
+
+
+# =========================================================
+# TRADUZIR TODAS AS FRASES
 # =========================================================
 
 def translate_phrases(
@@ -479,18 +615,18 @@ def translate_phrases(
 
 ):
 
-    # ---------------------------------------------
-    # Nenhuma frase
-    # ---------------------------------------------
+    # -----------------------------------------------------
+    # Não há frases
+    # -----------------------------------------------------
 
     if not phrases:
 
         return phrases
 
 
-    # ---------------------------------------------
+    # -----------------------------------------------------
     # Mesmo idioma
-    # ---------------------------------------------
+    # -----------------------------------------------------
 
     if source_language == target_language:
 
@@ -503,169 +639,32 @@ def translate_phrases(
         return phrases
 
 
-    # ---------------------------------------------
-    # Verificar URL
-    # ---------------------------------------------
+    # -----------------------------------------------------
+    # Traduzir
+    # -----------------------------------------------------
 
-    if not LIBRETRANSLATE_URL:
+    for index, phrase in enumerate(phrases):
 
-        raise HTTPException(
+        print(
 
-            status_code=500,
-
-            detail=(
-
-                "LIBRETRANSLATE_URL não está "
-                "configurada no servidor."
-
-            )
+            f"Traduzindo frase "
+            f"{index + 1}/{len(phrases)}"
 
         )
 
 
-    translate_url = (
+        translation = translate_text(
 
-        LIBRETRANSLATE_URL.rstrip("/")
+            phrase["original"],
 
-        + "/translate"
+            source_language,
 
-    )
+            target_language
 
+        )
 
-    # ---------------------------------------------
-    # Traduzir frases
-    # ---------------------------------------------
 
-    for phrase in phrases:
-
-        try:
-
-            response = requests.post(
-
-                translate_url,
-
-                json={
-
-                    "q":
-                        phrase["original"],
-
-                    "source":
-                        source_language,
-
-                    "target":
-                        target_language
-
-                },
-
-                timeout=60
-
-            )
-
-
-            # -------------------------------------
-            # Verificar resposta HTTP
-            # -------------------------------------
-
-            response.raise_for_status()
-
-
-            result = response.json()
-
-
-            # -------------------------------------
-            # Pegar tradução
-            # -------------------------------------
-
-            translation = result.get(
-                "translatedText"
-            )
-
-
-            if not translation:
-
-                raise ValueError(
-
-                    "LibreTranslate não "
-                    "retornou uma tradução."
-
-                )
-
-
-            phrase["translation"] = (
-                translation
-            )
-
-
-        except requests.exceptions.Timeout:
-
-            print(
-                "LibreTranslate demorou "
-                "demais para responder."
-            )
-
-
-            raise HTTPException(
-
-                status_code=504,
-
-                detail=(
-
-                    "O serviço de tradução "
-                    "demorou demais para responder."
-
-                )
-
-            )
-
-
-        except requests.exceptions.RequestException as error:
-
-            print(
-
-                "Erro de conexão com "
-                "LibreTranslate:",
-
-                error
-
-            )
-
-
-            raise HTTPException(
-
-                status_code=502,
-
-                detail=(
-
-                    "Não foi possível conectar "
-                    "ao serviço de tradução."
-
-                )
-
-            )
-
-
-        except Exception as error:
-
-            print(
-
-                "Erro na tradução:",
-                error
-
-            )
-
-
-            raise HTTPException(
-
-                status_code=500,
-
-                detail=(
-
-                    "Erro ao traduzir "
-                    "as legendas."
-
-                )
-
-            )
+        phrase["translation"] = translation
 
 
     return phrases
@@ -703,9 +702,9 @@ def process_video(
 
 ):
 
-    # ---------------------------------------------
-    # Pegar ID do YouTube
-    # ---------------------------------------------
+    # =====================================================
+    # PEGAR ID DO YOUTUBE
+    # =====================================================
 
     video_id = youtube_id(
 
@@ -726,9 +725,9 @@ def process_video(
         )
 
 
-    # ---------------------------------------------
-    # Normalizar idiomas
-    # ---------------------------------------------
+    # =====================================================
+    # IDIOMAS
+    # =====================================================
 
     source_language = (
 
@@ -744,9 +743,9 @@ def process_video(
     )
 
 
-    # ---------------------------------------------
-    # Verificar idioma de origem
-    # ---------------------------------------------
+    # =====================================================
+    # VALIDAR IDIOMA DE ORIGEM
+    # =====================================================
 
     if source_language not in LANGUAGE_NAMES:
 
@@ -760,9 +759,9 @@ def process_video(
         )
 
 
-    # ---------------------------------------------
-    # Verificar idioma de destino
-    # ---------------------------------------------
+    # =====================================================
+    # VALIDAR IDIOMA DE DESTINO
+    # =====================================================
 
     if target_language not in LANGUAGE_NAMES:
 
@@ -776,9 +775,9 @@ def process_video(
         )
 
 
-    # =================================================
-    # TRANSCRIÇÃO
-    # =================================================
+    # =====================================================
+    # PEGAR TRANSCRIÇÃO
+    # =====================================================
 
     transcript = get_transcript(
 
@@ -789,9 +788,9 @@ def process_video(
     )
 
 
-    # =================================================
+    # =====================================================
     # ORGANIZAR FRASES
-    # =================================================
+    # =====================================================
 
     phrases = merge_transcript(
 
@@ -812,9 +811,9 @@ def process_video(
         )
 
 
-    # =================================================
+    # =====================================================
     # LIMITE DE 30 MINUTOS
-    # =================================================
+    # =====================================================
 
     last = phrases[-1]
 
@@ -840,9 +839,9 @@ def process_video(
         )
 
 
-    # =================================================
-    # TRADUÇÃO
-    # =================================================
+    # =====================================================
+    # TRADUZIR
+    # =====================================================
 
     phrases = translate_phrases(
 
@@ -855,9 +854,9 @@ def process_video(
     )
 
 
-    # =================================================
+    # =====================================================
     # RESPOSTA
-    # =================================================
+    # =====================================================
 
     return {
 
@@ -886,6 +885,10 @@ def process_video(
         "target_language":
             target_language,
 
+        "phrases":
+            phrases
+
+    }
         "phrases":
             phrases
 
