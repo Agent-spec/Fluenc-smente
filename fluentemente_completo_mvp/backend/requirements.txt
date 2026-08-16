@@ -1,5 +1,8 @@
 fastapi
-uvicorn[standard]
-youtube-transcript-api>=1.2.0
+uvicorn
 pydantic
-
+requests
+youtube-transcript-api
+pyjwt
+pwdlib[argon2]
+python-multipart
