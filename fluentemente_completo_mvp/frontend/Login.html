@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Fluentemente - Login</title>
+
+    <link
+        rel="stylesheet"
+        href="login.css"
+    >
+</head>
+
+<body>
+
+    <div class="background">
+
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+
+    </div>
+
+
+    <main class="login-container">
+
+        <section class="login-card">
+
+            <div class="brand">
+
+                <div class="brand-icon">
+                    F
+                </div>
+
+                <span>
+                    Fluentemente
+                </span>
+
+            </div>
+
+
+            <div class="login-header">
+
+                <h1>
+                    Bem-vindo de volta
+                </h1>
+
+                <p>
+                    Entre na sua conta para continuar
+                    aprendendo idiomas.
+                </p>
+
+            </div>
+
+
+            <form id="loginForm">
+
+                <div class="input-group">
+
+                    <label for="email">
+                        E-mail
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="username"
+                        placeholder="seu@email.com"
+                        autocomplete="email"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="input-group">
+
+                    <label for="password">
+                        Senha
+                    </label>
+
+
+                    <div class="password-wrapper">
+
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="Digite sua senha"
+                            autocomplete="current-password"
+                            required
+                        >
+
+                        <button
+                            type="button"
+                            id="togglePassword"
+                            class="password-toggle"
+                        >
+                            Mostrar
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="errorMessage"
+                    class="error-message"
+                ></div>
+
+
+                <button
+                    type="submit"
+                    class="login-button"
+                    id="loginButton"
+                >
+
+                    <span id="buttonText">
+                        Entrar
+                    </span>
+
+                    <span
+                        id="loading"
+                        class="loading"
+                    >
+                        Entrando...
+                    </span>
+
+                </button>
+
+            </form>
+
+
+            <div class="security">
+
+                <span class="security-icon">
+                    🔒
+                </span>
+
+                <span>
+                    Acesso protegido e seguro
+                </span>
+
+            </div>
+
+
+            <div class="footer">
+
+                <span>
+                    Fluentemente
+                </span>
+
+                <span>
+                    •
+                </span>
+
+                <span>
+                    Aprenda idiomas de verdade.
+                </span>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <script src="login.js"></script>
+
+</body>
+
+</html>
