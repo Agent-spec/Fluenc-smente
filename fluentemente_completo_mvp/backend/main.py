@@ -664,7 +664,7 @@ def process_video(
 
             status_code=400,
 
-            detail:
+            detail=
                 "URL do YouTube inválida."
 
         )
@@ -686,7 +686,7 @@ def process_video(
 
             status_code=400,
 
-            detail:
+            detail=
                 "Idioma de origem não suportado."
 
         )
@@ -698,7 +698,7 @@ def process_video(
 
             status_code=400,
 
-            detail:
+            detail=
                 "Idioma de destino não suportado."
 
         )
@@ -728,7 +728,7 @@ def process_video(
 
             status_code=422,
 
-            detail:
+            detail=
                 "A transcrição não contém texto utilizável."
 
         )
@@ -753,7 +753,7 @@ def process_video(
 
             status_code=413,
 
-            detail:
+            detail=
                 "Este MVP aceita vídeos de até 30 minutos."
 
         )
