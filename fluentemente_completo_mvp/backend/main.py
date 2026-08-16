@@ -854,42 +854,26 @@ def process_video(
     )
 
 
-    # =====================================================
-    # RESPOSTA
-    # =====================================================
+   # =========================================================
+# RESPOSTA
+# =========================================================
 
     return {
-
         "video": {
-
-            "id":
-                video_id,
-
-            "duration_estimate":
-                round(
-                    estimated_end,
-                    2
-                ),
-
-            "youtube_url":
-                (
-                    "https://www.youtube.com/watch?v="
-                    + video_id
-                )
-
+            "id": video_id,
+            "duration_estimate": round(
+                estimated_end,
+                2
+            ),
+            "youtube_url": (
+                "https://www.youtube.com/watch?v="
+                + video_id
+            )
         },
 
-        "source_language":
-            source_language,
+        "source_language": source_language,
 
-        "target_language":
-            target_language,
+        "target_language": target_language,
 
-        "phrases":
-            phrases
-
-    }
-        "phrases":
-            phrases
-
+        "phrases": phrases
     }
