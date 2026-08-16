@@ -2,23 +2,22 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl
 from urllib.parse import urlparse, parse_qs
-from youtube_transcript_api import YouTubeTranscriptApi
-
 from openai import OpenAI
-
-import os
+from youtube_transcript_api import YouTubeTranscriptApi
 import re
+import os
 import json
 
-
-# ==================================================
-# CONFIGURAÇÃO
-# ==================================================
 
 app = FastAPI(
     title="Fluentemente API",
     version="0.2.0"
 )
+
+
+# =========================================================
+# CORS
+# =========================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,58 +28,117 @@ app.add_middleware(
 )
 
 
-# ==================================================
+# =========================================================
 # OPENAI
-# ==================================================
+# =========================================================
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-if OPENAI_API_KEY:
-    client = OpenAI(api_key=OPENAI_API_KEY)
-else:
-    client = None
+if not OPENAI_API_KEY:
+    print("AVISO: OPENAI_API_KEY não encontrada.")
+
+client = OpenAI(
+    api_key=OPENAI_API_KEY
+) if OPENAI_API_KEY else None
 
 
-# ==================================================
-# MODELOS
-# ==================================================
+# =========================================================
+# MODELO DA REQUISIÇÃO
+# =========================================================
 
 class VideoRequest(BaseModel):
+
     url: HttpUrl
+
     source_language: str = "fr"
+
     target_language: str = "pt"
 
 
-# ==================================================
-# YOUTUBE
-# ==================================================
+# =========================================================
+# IDIOMAS
+# =========================================================
+
+LANGUAGE_NAMES = {
+
+    "fr": "francês",
+
+    "en": "inglês",
+
+    "de": "alemão",
+
+    "es": "espanhol",
+
+    "it": "italiano",
+
+    "sv": "sueco",
+
+    "pt": "português",
+
+    "ja": "japonês",
+
+    "zh": "chinês"
+
+}
+
+
+# =========================================================
+# YOUTUBE ID
+# =========================================================
 
 def youtube_id(url: str):
 
     parsed = urlparse(url)
+
     host = parsed.netloc.lower()
 
+
     if "youtu.be" in host:
-        return parsed.path.strip("/").split("/")[0] or None
+
+        return (
+            parsed.path
+            .strip("/")
+            .split("/")[0]
+            or None
+        )
+
 
     if "youtube.com" in host:
 
-        query = parse_qs(parsed.query)
+        query = parse_qs(
+            parsed.query
+        )
+
 
         if "v" in query:
+
             return query["v"][0]
 
-        parts = parsed.path.strip("/").split("/")
 
-        if len(parts) >= 2 and parts[0] in ("shorts", "embed"):
+        parts = (
+            parsed.path
+            .strip("/")
+            .split("/")
+        )
+
+
+        if (
+            len(parts) >= 2
+            and parts[0] in (
+                "shorts",
+                "embed"
+            )
+        ):
+
             return parts[1]
+
 
     return None
 
 
-# ==================================================
+# =========================================================
 # LIMPAR TEXTO
-# ==================================================
+# =========================================================
 
 def clean_text(text: str):
 
@@ -88,14 +146,14 @@ def clean_text(text: str):
         r"\s+",
         " ",
         text or ""
-    ).strip()
+    )
 
-    return text
+    return text.strip()
 
 
-# ==================================================
+# =========================================================
 # JUNTAR TRANSCRIÇÃO
-# ==================================================
+# =========================================================
 
 def merge_transcript(items):
 
@@ -107,6 +165,7 @@ def merge_transcript(items):
 
     duration = 0.0
 
+
     for item in items:
 
         text = clean_text(
@@ -115,8 +174,10 @@ def merge_transcript(items):
             else item.get("text", "")
         )
 
+
         if not text:
             continue
+
 
         item_start = float(
             item.start
@@ -124,14 +185,18 @@ def merge_transcript(items):
             else item.get("start", 0)
         )
 
+
         item_duration = float(
             item.duration
             if hasattr(item, "duration")
             else item.get("duration", 0)
         )
 
+
         if start is None:
+
             start = item_start
+
 
         buffer.append(text)
 
@@ -139,16 +204,31 @@ def merge_transcript(items):
 
         combined = " ".join(buffer)
 
+
         if (
-            re.search(r"[.!?…]$", combined)
+            re.search(
+                r"[.!?…]$",
+                combined
+            )
             or len(combined) >= 95
         ):
 
             phrases.append({
-                "start": round(start, 2),
-                "duration": round(duration, 2),
+
+                "start": round(
+                    start,
+                    2
+                ),
+
+                "duration": round(
+                    duration,
+                    2
+                ),
+
                 "original": combined
+
             })
+
 
             buffer = []
 
@@ -156,39 +236,109 @@ def merge_transcript(items):
 
             duration = 0.0
 
+
     if buffer:
 
         phrases.append({
-            "start": round(start or 0, 2),
-            "duration": round(duration, 2),
-            "original": " ".join(buffer)
+
+            "start": round(
+                start or 0,
+                2
+            ),
+
+            "duration": round(
+                duration,
+                2
+            ),
+
+            "original":
+                " ".join(buffer)
+
         })
+
 
     return phrases
 
 
-# ==================================================
-# OBTER TRANSCRIÇÃO
-# ==================================================
+# =========================================================
+# PEGAR TRANSCRIÇÃO
+# =========================================================
 
-def get_transcript(video_id, language):
+def get_transcript(
+    video_id,
+    language
+):
 
     api = YouTubeTranscriptApi()
 
-    languages = [language]
 
-    if language == "fr":
-        languages += ["fr-FR", "fr"]
+    languages = [
+        language
+    ]
 
-    elif language == "en":
-        languages += ["en-US", "en"]
 
-    elif language == "de":
-        languages += ["de-DE", "de"]
+    fallbacks = {
+
+        "fr": [
+            "fr-FR",
+            "fr"
+        ],
+
+        "en": [
+            "en-US",
+            "en"
+        ],
+
+        "de": [
+            "de-DE",
+            "de"
+        ],
+
+        "es": [
+            "es-ES",
+            "es"
+        ],
+
+        "it": [
+            "it-IT",
+            "it"
+        ],
+
+        "sv": [
+            "sv-SE",
+            "sv"
+        ],
+
+        "pt": [
+            "pt-BR",
+            "pt"
+        ],
+
+        "ja": [
+            "ja-JP",
+            "ja"
+        ],
+
+        "zh": [
+            "zh-CN",
+            "zh"
+        ]
+
+    }
+
+
+    languages += fallbacks.get(
+        language,
+        []
+    )
+
 
     languages = list(
-        dict.fromkeys(languages)
+        dict.fromkeys(
+            languages
+        )
     )
+
 
     try:
 
@@ -199,42 +349,59 @@ def get_transcript(video_id, language):
 
         return transcript
 
+
     except Exception:
 
         try:
 
-            transcripts = api.list(video_id)
+            transcripts = api.list(
+                video_id
+            )
 
-            for t in transcripts:
+
+            for transcript in transcripts:
 
                 lang_code = getattr(
-                    t,
+                    transcript,
                     "language_code",
                     ""
                 )
 
+
                 if (
                     lang_code in languages
-                    or lang_code.startswith(language)
+                    or lang_code.startswith(
+                        language
+                    )
                 ):
 
-                    return t.fetch()
+                    return transcript.fetch()
 
-        except Exception:
-            pass
+
+        except Exception as error:
+
+            print(
+                "Erro procurando transcrição:",
+                error
+            )
+
 
     raise HTTPException(
+
         status_code=422,
+
         detail=(
             "Não foi encontrada uma "
-            "transcrição compatível para este vídeo."
+            "transcrição compatível "
+            "para este vídeo."
         )
+
     )
 
 
-# ==================================================
-# TRADUÇÃO COM OPENAI
-# ==================================================
+# =========================================================
+# TRADUZIR FRASES COM OPENAI
+# =========================================================
 
 def translate_phrases(
     phrases,
@@ -242,237 +409,311 @@ def translate_phrases(
     target_language
 ):
 
-    # Se não houver chave configurada,
-    # retorna as frases sem tradução.
-    if not client:
+    if not phrases:
+
+        return phrases
+
+
+    if source_language == target_language:
 
         for phrase in phrases:
 
             phrase["translation"] = (
-                "Tradução não configurada."
-            )
-
-            phrase["level"] = "A1"
-
-            phrase["explanation"] = (
-                "Configure a OPENAI_API_KEY no Render."
+                phrase["original"]
             )
 
         return phrases
 
 
-    # Enviamos apenas o necessário para a IA.
-    items = []
+    if not client:
 
-    for index, phrase in enumerate(phrases):
+        raise HTTPException(
 
-        items.append({
-            "index": index,
-            "text": phrase["original"]
-        })
+            status_code=500,
+
+            detail=(
+                "OPENAI_API_KEY não está "
+                "configurada no servidor."
+            )
+
+        )
 
 
-    prompt = f"""
-Você é o professor de francês do aplicativo Fluentemente.
+    source_name = LANGUAGE_NAMES.get(
+        source_language,
+        source_language
+    )
 
-Analise as frases abaixo.
 
-Idioma original: {source_language}
-Idioma de destino: {target_language}
+    target_name = LANGUAGE_NAMES.get(
+        target_language,
+        target_language
+    )
 
-Para CADA frase:
 
-1. Traduza para português brasileiro natural.
-2. Classifique o nível aproximado da frase usando CEFR:
-   A1, A2, B1, B2, C1 ou C2.
-3. Explique de maneira curta e simples o significado ou
-   alguma construção importante da frase.
+    # Enviamos grupos de frases para reduzir
+    # o número de chamadas à API.
 
-IMPORTANTE:
+    batch_size = 20
 
-- Não invente informações.
-- Preserve o sentido original.
-- Para francês informal, mantenha a tradução natural.
-- Não traduza palavra por palavra quando isso produzir
-  português estranho.
-- A explicação deve ser curta.
-- Retorne SOMENTE JSON válido.
 
-Formato:
+    for start_index in range(
+        0,
+        len(phrases),
+        batch_size
+    ):
 
-{{
-  "translations": [
-    {{
-      "index": 0,
-      "translation": "...",
-      "level": "A1",
-      "explanation": "..."
-    }}
-  ]
-}}
+        batch = phrases[
+            start_index:
+            start_index + batch_size
+        ]
+
+
+        input_phrases = [
+
+            {
+                "id": index,
+                "text": item["original"]
+            }
+
+            for index, item in enumerate(
+                batch
+            )
+        ]
+
+
+        prompt = f"""
+Você é o tradutor do Fluentemente,
+uma plataforma de aprendizagem de idiomas.
+
+Traduza as frases abaixo do
+{source_name} para {target_name}.
+
+REGRAS:
+
+1. Preserve o significado original.
+2. Use uma tradução natural.
+3. Não faça tradução palavra por palavra quando isso soar estranho.
+4. Mantenha gírias e expressões naturais quando existirem.
+5. Não adicione explicações.
+6. Não altere a ordem das frases.
+7. Retorne SOMENTE JSON válido.
+8. O JSON deve possuir uma chave chamada "translations".
+9. Cada tradução deve possuir "id" e "translation".
 
 Frases:
 
-{json.dumps(items, ensure_ascii=False)}
+{json.dumps(
+    input_phrases,
+    ensure_ascii=False
+)}
 """
 
 
-    try:
+        try:
 
-        response = client.responses.create(
+            response = client.chat.completions.create(
 
-            model="gpt-5.6",
+                model="gpt-4o-mini",
 
-            input=prompt
-        )
+                messages=[
 
-        text = response.output_text.strip()
+                    {
+                        "role": "system",
+                        "content":
+                            "Você é um tradutor preciso."
+                    },
 
+                    {
+                        "role": "user",
+                        "content":
+                            prompt
+                    }
 
-        # Remove possíveis cercas de Markdown
-        text = re.sub(
-            r"^```json\s*",
-            "",
-            text
-        )
+                ],
 
-        text = re.sub(
-            r"\s*```$",
-            "",
-            text
-        )
+                temperature=0.2,
 
+                response_format={
+                    "type": "json_object"
+                }
 
-        result = json.loads(text)
-
-        translations = result.get(
-            "translations",
-            []
-        )
-
-
-        # Indexa as respostas da IA
-        translation_map = {
-            item["index"]: item
-            for item in translations
-            if "index" in item
-        }
-
-
-        # Junta os dados da IA com os timestamps
-        for index, phrase in enumerate(phrases):
-
-            ai_data = translation_map.get(
-                index
             )
 
-            if ai_data:
 
-                phrase["translation"] = (
-                    ai_data.get(
-                        "translation",
-                        "Tradução não disponível"
+            content = (
+                response
+                .choices[0]
+                .message
+                .content
+            )
+
+
+            result = json.loads(
+                content
+            )
+
+
+            translations = result.get(
+                "translations",
+                []
+            )
+
+
+            for translated in translations:
+
+                item_id = translated.get(
+                    "id"
+                )
+
+
+                translation = translated.get(
+                    "translation",
+                    ""
+                )
+
+
+                if (
+                    isinstance(
+                        item_id,
+                        int
                     )
-                )
+                    and 0 <= item_id < len(batch)
+                ):
 
-                phrase["level"] = (
-                    ai_data.get(
-                        "level",
-                        "A1"
+                    batch[
+                        item_id
+                    ]["translation"] = (
+                        translation
                     )
+
+
+        except Exception as error:
+
+            print(
+                "Erro na tradução:",
+                error
+            )
+
+
+            raise HTTPException(
+
+                status_code=500,
+
+                detail=(
+                    "Erro ao traduzir as "
+                    "legendas com a IA."
                 )
 
-                phrase["explanation"] = (
-                    ai_data.get(
-                        "explanation",
-                        "Sem explicação disponível."
-                    )
-                )
-
-            else:
-
-                phrase["translation"] = (
-                    "Tradução não disponível"
-                )
-
-                phrase["level"] = "A1"
-
-                phrase["explanation"] = (
-                    "Não foi possível analisar esta frase."
-                )
+            )
 
 
-        return phrases
+    # Se alguma tradução não veio,
+    # evita quebrar o frontend.
 
+    for phrase in phrases:
 
-    except Exception as error:
-
-        print(
-            "Erro na tradução OpenAI:",
-            error
-        )
-
-        # Se a IA falhar, o vídeo ainda funciona.
-        for phrase in phrases:
+        if "translation" not in phrase:
 
             phrase["translation"] = (
-                "Tradução temporariamente indisponível."
+                "Tradução não disponível"
             )
 
-            phrase["level"] = "A1"
 
-            phrase["explanation"] = (
-                "A frase foi extraída da transcrição."
-            )
-
-        return phrases
+    return phrases
 
 
-# ==================================================
+# =========================================================
 # ROTA PRINCIPAL
-# ==================================================
+# =========================================================
 
 @app.get("/")
 def root():
 
     return {
-        "name": "Fluentemente API",
-        "status": "online",
-        "message": (
-            "API de estudo de idiomas "
-            "para vídeos do YouTube."
-        )
+
+        "name":
+            "Fluentemente API",
+
+        "status":
+            "online",
+
+        "message":
+            "API de estudo de idiomas para vídeos do YouTube."
+
     }
 
+
+# =========================================================
+# PROCESSAR VÍDEO
+# =========================================================
 
 @app.post("/api/video")
 def process_video(
     request: VideoRequest
 ):
 
-    # ----------------------------------------------
-    # ID DO YOUTUBE
-    # ----------------------------------------------
-
     video_id = youtube_id(
         str(request.url)
     )
 
+
     if not video_id:
 
         raise HTTPException(
+
             status_code=400,
-            detail="URL do YouTube inválida."
+
+            detail:
+                "URL do YouTube inválida."
+
         )
 
 
-    # ----------------------------------------------
+    source_language = (
+        request.source_language.lower()
+    )
+
+
+    target_language = (
+        request.target_language.lower()
+    )
+
+
+    if source_language not in LANGUAGE_NAMES:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail:
+                "Idioma de origem não suportado."
+
+        )
+
+
+    if target_language not in LANGUAGE_NAMES:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail:
+                "Idioma de destino não suportado."
+
+        )
+
+
+    # ---------------------------------------------
     # TRANSCRIÇÃO
-    # ----------------------------------------------
+    # ---------------------------------------------
 
     transcript = get_transcript(
+
         video_id,
-        request.source_language
+
+        source_language
+
     )
 
 
@@ -484,19 +725,21 @@ def process_video(
     if not phrases:
 
         raise HTTPException(
+
             status_code=422,
-            detail=(
-                "A transcrição não contém "
-                "texto utilizável."
-            )
+
+            detail:
+                "A transcrição não contém texto utilizável."
+
         )
 
 
-    # ----------------------------------------------
+    # ---------------------------------------------
     # LIMITE DE 30 MINUTOS
-    # ----------------------------------------------
+    # ---------------------------------------------
 
     last = phrases[-1]
+
 
     estimated_end = (
         last["start"]
@@ -507,53 +750,59 @@ def process_video(
     if estimated_end > 30 * 60:
 
         raise HTTPException(
+
             status_code=413,
-            detail=(
-                "Este MVP aceita vídeos "
-                "de até 30 minutos."
-            )
+
+            detail:
+                "Este MVP aceita vídeos de até 30 minutos."
+
         )
 
 
-    # ----------------------------------------------
-    # OPENAI
-    # ----------------------------------------------
+    # ---------------------------------------------
+    # TRADUÇÃO
+    # ---------------------------------------------
 
     phrases = translate_phrases(
+
         phrases,
-        request.source_language,
-        request.target_language
+
+        source_language,
+
+        target_language
+
     )
 
 
-    # ----------------------------------------------
+    # ---------------------------------------------
     # RESPOSTA
-    # ----------------------------------------------
+    # ---------------------------------------------
 
     return {
 
         "video": {
 
-            "id": video_id,
+            "id":
+                video_id,
 
-            "duration_estimate": round(
-                estimated_end,
-                2
-            ),
+            "duration_estimate":
+                round(
+                    estimated_end,
+                    2
+                ),
 
             "youtube_url":
                 f"https://www.youtube.com/watch?v={video_id}"
+
         },
 
         "source_language":
-            request.source_language,
+            source_language,
 
         "target_language":
-            request.target_language,
+            target_language,
 
         "phrases":
-            phrases,
+            phrases
 
-        "ai_translation":
-            bool(client)
     }
