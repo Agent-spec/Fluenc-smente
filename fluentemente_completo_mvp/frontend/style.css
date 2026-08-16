@@ -1126,3 +1126,145 @@ footer {
   }
 
 }
+
+/* =========================================
+   SELETOR DE IDIOMAS
+========================================= */
+
+.language-selector {
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    gap: 18px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.language-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 190px;
+}
+
+.language-field label {
+    color: #aaa;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.language-field select {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+
+    background: #171217;
+    color: #f4f4f4;
+
+    border: 1px solid #3b2630;
+
+    outline: none;
+
+    font-size: 14px;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.language-field select:hover {
+    border-color: #7f263d;
+}
+
+.language-field select:focus {
+    border-color: #9e304d;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(158, 48, 77, 0.15);
+}
+
+.language-arrow {
+    color: #a83250;
+    font-size: 24px;
+    font-weight: bold;
+    padding-bottom: 10px;
+}
+
+
+/* =========================================
+   PEQUENA IDENTIFICAÇÃO DO IDIOMA
+========================================= */
+
+.language-label {
+    display: block;
+
+    margin-top: 10px;
+
+    color: #8f7c84;
+
+    font-size: 11px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.08em;
+}
+
+
+/* =========================================
+   LOADING
+========================================= */
+
+.loading {
+    padding: 40px;
+
+    text-align: center;
+
+    color: #d8d0d3;
+}
+
+.loading strong {
+    display: block;
+
+    margin-bottom: 8px;
+
+    color: #ffffff;
+
+    font-size: 16px;
+}
+
+.loading span {
+    color: #8f858a;
+
+    font-size: 13px;
+}
+
+
+/* =========================================
+   ERRO
+========================================= */
+
+.error {
+    padding: 25px;
+
+    border-radius: 12px;
+
+    background: rgba(
+        120,
+        25,
+        45,
+        0.12
+    );
+
+    border: 1px solid
+        rgba(
+            158,
+            48,
+            77,
+            0.35
+        );
+
+    color: #e5cdd3;
+}
