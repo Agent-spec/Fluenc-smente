@@ -1493,7 +1493,7 @@ def process_video(
 
             status_code=422,
 
-            detail:
+            detail=
                 "A transcrição não contém texto utilizável."
 
         )
