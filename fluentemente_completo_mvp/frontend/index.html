@@ -1,92 +1,551 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fluentemente</title>
-<style>
-body{font-family:Arial,sans-serif;background:#f5f4ef;color:#171717;margin:0}
-main{max-width:1050px;margin:auto;padding:60px 20px}
-h1{font-size:58px;letter-spacing:-3px;margin:0 0 10px}p{color:#666;line-height:1.6}
-.box{background:white;padding:22px;border:1px solid #e5e2da;border-radius:18px;display:flex;gap:10px}
-input{flex:1;padding:15px;border:1px solid #ddd;border-radius:10px;font-size:15px}
-button{border:0;background:#171717;color:white;border-radius:10px;padding:15px 20px;font-weight:bold;cursor:pointer}
-#status{min-height:25px}
-#player{margin-top:30px;aspect-ratio:16/9;background:#111;border-radius:18px;overflow:hidden}
-#player iframe{width:100%;height:100%;border:0}
-.caption{background:#171717;color:white;text-align:center;padding:20px;border-radius:0 0 18px 18px}
-.original{font-size:24px;font-weight:bold;margin:0}.translation{color:#ccc}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:30px}
-.card{background:white;border:1px solid #e5e2da;border-radius:15px;padding:18px;cursor:pointer}
-.card:hover{transform:translateY(-2px)}
-@media(max-width:700px){h1{font-size:42px}.box{flex-direction:column}.cards{grid-template-columns:1fr}}
-</style>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Fluentemente</title>
+
+  <link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+  >
+
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  >
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
 </head>
+
 <body>
-<main>
-<p>YOUTUBE LANGUAGE LAB</p>
-<h1>Fluentemente</h1>
-<p>Cole um vídeo do YouTube de até 30 minutos e transforme a transcrição em material de estudo.</p>
 
-<div class="box">
-<input id="url" placeholder="https://www.youtube.com/watch?v=...">
-<button id="go">Processar vídeo</button>
-</div>
-<p id="status"></p>
+  <!-- =========================
+       BACKGROUND
+  ========================== -->
 
-<div id="player"></div>
-<div class="caption">
-<p class="original" id="original">Aguardando vídeo...</p>
-<p class="translation" id="translation">A tradução aparecerá aqui.</p>
-</div>
+  <div class="background-glow glow-one"></div>
+  <div class="background-glow glow-two"></div>
 
-<div id="cards" class="cards"></div>
-</main>
-<script src="https://www.youtube.com/iframe_api"></script>
-<script>
-const API="http://127.0.0.1:8000";
-let data=null,player=null,index=0;
 
-function getId(url){
- try{
-  const u=new URL(url);
-  if(u.hostname.includes("youtu.be")) return u.pathname.slice(1).split("/")[0];
-  if(u.hostname.includes("youtube.com")) return u.searchParams.get("v")||u.pathname.split("/").filter(Boolean).pop();
- }catch(e){}
- return null;
-}
-function onYouTubeIframeAPIReady(){}
-function createPlayer(id){
- if(player){player.loadVideoById(id);return}
- player=new YT.Player("player",{videoId:id,playerVars:{rel:0,modestbranding:1}});
-}
-function showPhrase(i){
- if(!data||!data.phrases.length)return;
- index=i;
- const p=data.phrases[i];
- document.getElementById("original").textContent=p.original;
- document.getElementById("translation").textContent="Tradução será adicionada nesta etapa.";
- if(player&&player.seekTo)player.seekTo(p.start,true);
-}
-function render(){
- const cards=document.getElementById("cards");
- cards.innerHTML=data.phrases.map((p,i)=>`<div class="card"><b>${p.original}</b><p>${p.start.toFixed(1)}s</p></div>`).join("");
- [...cards.children].forEach((c,i)=>c.onclick=()=>showPhrase(i));
- showPhrase(0);
-}
-document.getElementById("go").onclick=async()=>{
- const url=document.getElementById("url").value.trim();
- document.getElementById("status").textContent="Processando transcrição...";
- try{
-  const r=await fetch(API+"/api/video",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url,source_language:"fr",target_language:"pt"})});
-  const j=await r.json();
-  if(!r.ok)throw new Error(j.detail||"Erro");
-  data=j;
-  createPlayer(j.video.id);
-  render();
-  document.getElementById("status").textContent=`Vídeo reconhecido. ${j.phrases.length} unidades de legenda encontradas.`;
- }catch(e){document.getElementById("status").textContent="Erro: "+e.message}
-};
-</script>
+  <!-- =========================
+       NAVBAR
+  ========================== -->
+
+  <header class="navbar">
+
+    <div class="logo">
+
+      <div class="logo-icon">
+        F
+      </div>
+
+      <span>
+        Fluentemente
+      </span>
+
+    </div>
+
+
+    <nav>
+
+      <a href="#inicio">
+        Início
+      </a>
+
+      <a href="#frases">
+        Frases
+      </a>
+
+      <a href="#como-funciona">
+        Como funciona
+      </a>
+
+    </nav>
+
+
+    <div class="nav-status">
+
+      <span class="status-dot"></span>
+
+      Aprendizado ativo
+
+    </div>
+
+  </header>
+
+
+
+  <!-- =========================
+       HERO
+  ========================== -->
+
+  <main>
+
+    <section
+      id="inicio"
+      class="hero"
+    >
+
+      <div class="hero-badge">
+
+        <span>✦</span>
+
+        Aprenda idiomas com conteúdo real
+
+      </div>
+
+
+      <h1>
+
+        Aprenda francês
+        <br>
+
+        <span>de forma natural.</span>
+
+      </h1>
+
+
+      <p class="hero-description">
+
+        Transforme vídeos do YouTube em experiências
+        de aprendizado. Veja frases reais, traduções
+        e pratique sua pronúncia.
+
+      </p>
+
+
+      <!-- =========================
+           VIDEO INPUT
+      ========================== -->
+
+      <div class="video-input">
+
+        <div class="url-icon">
+          🔗
+        </div>
+
+
+        <input
+          id="youtubeUrl"
+          type="url"
+          placeholder="Cole aqui o link de um vídeo do YouTube..."
+        >
+
+
+        <button
+          id="loadVideo"
+          type="button"
+        >
+
+          <span>
+            Processar vídeo
+          </span>
+
+          <strong>
+            →
+          </strong>
+
+        </button>
+
+      </div>
+
+
+      <div class="input-info">
+
+        <span>●</span>
+
+        Seu conteúdo será transformado em frases para estudo
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         PLAYER
+    ========================== -->
+
+    <section class="workspace">
+
+      <div class="workspace-header">
+
+        <div>
+
+          <span class="section-label">
+            CONTEÚDO
+          </span>
+
+          <h2>
+            Seu vídeo
+          </h2>
+
+        </div>
+
+
+        <div class="language-pill">
+
+          🇫🇷
+
+          Francês
+
+        </div>
+
+      </div>
+
+
+      <div class="video-container">
+
+        <iframe
+          id="youtubePlayer"
+          src=""
+          title="YouTube video player"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        ></iframe>
+
+
+        <div class="video-placeholder">
+
+          <div class="play-icon">
+            ▶
+          </div>
+
+          <span>
+            Cole um vídeo acima para começar
+          </span>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         FRASES
+    ========================== -->
+
+    <section
+      id="frases"
+      class="phrases-section"
+    >
+
+      <div class="section-top">
+
+        <div>
+
+          <span class="section-label">
+            APRENDIZADO
+          </span>
+
+          <h2>
+            Frases do vídeo
+          </h2>
+
+          <p>
+            Clique em uma frase para estudar.
+          </p>
+
+        </div>
+
+
+        <div class="filter-container">
+
+          <label for="levelFilter">
+            Nível
+          </label>
+
+          <select id="levelFilter">
+
+            <option value="todos">
+              Todos
+            </option>
+
+            <option value="A1">
+              A1
+            </option>
+
+            <option value="A2">
+              A2
+            </option>
+
+            <option value="B1">
+              B1
+            </option>
+
+            <option value="B2">
+              B2
+            </option>
+
+            <option value="C1">
+              C1
+            </option>
+
+            <option value="C2">
+              C2
+            </option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+
+      <!--
+        O SCRIPT.JS VAI PREENCHER ESTE ELEMENTO
+      -->
+
+      <div
+        id="phraseGrid"
+        class="phrase-grid"
+      >
+
+        <div class="empty-state">
+
+          <div class="empty-icon">
+            ✦
+          </div>
+
+          <h3>
+            Nenhuma frase ainda
+          </h3>
+
+          <p>
+            Cole um vídeo do YouTube acima para começar.
+          </p>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         COMO FUNCIONA
+    ========================== -->
+
+    <section
+      id="como-funciona"
+      class="how-section"
+    >
+
+      <div class="section-heading">
+
+        <span class="section-label">
+          COMO FUNCIONA
+        </span>
+
+        <h2>
+          Do vídeo para o aprendizado.
+        </h2>
+
+      </div>
+
+
+      <div class="steps">
+
+        <article class="step-card">
+
+          <div class="step-number">
+            01
+          </div>
+
+          <div class="step-icon">
+            ▶
+          </div>
+
+          <h3>
+            Escolha um vídeo
+          </h3>
+
+          <p>
+            Encontre no YouTube um conteúdo em francês
+            que você realmente tenha interesse em assistir.
+          </p>
+
+        </article>
+
+
+        <article class="step-card featured">
+
+          <div class="step-number">
+            02
+          </div>
+
+          <div class="step-icon">
+            ✦
+          </div>
+
+          <h3>
+            Fluentemente processa
+          </h3>
+
+          <p>
+            O conteúdo é transformado em frases organizadas
+            para você estudar.
+          </p>
+
+        </article>
+
+
+        <article class="step-card">
+
+          <div class="step-number">
+            03
+          </div>
+
+          <div class="step-icon">
+            ✓
+          </div>
+
+          <h3>
+            Pratique
+          </h3>
+
+          <p>
+            Estude as frases, entenda o contexto e pratique
+            a pronúncia em francês.
+          </p>
+
+        </article>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+
+  <!-- =========================
+       MODAL
+  ========================== -->
+
+  <div
+    id="modal"
+    class="modal hidden"
+  >
+
+    <div class="modal-box">
+
+      <button
+        id="closeModal"
+        class="modal-close"
+      >
+        ×
+      </button>
+
+
+      <span
+        id="modalLevel"
+        class="modal-level"
+      >
+        A1 • FRANCÊS
+      </span>
+
+
+      <h2 id="modalPhrase">
+        Bonjour
+      </h2>
+
+
+      <div class="translation-box">
+
+        <span>
+          TRADUÇÃO
+        </span>
+
+        <p id="modalTranslation">
+          Tradução
+        </p>
+
+      </div>
+
+
+      <div class="explanation-box">
+
+        <span>
+          EXPLICAÇÃO
+        </span>
+
+        <p id="modalExplanation">
+          Explicação
+        </p>
+
+      </div>
+
+
+      <button
+        id="speakButton"
+        class="speak-button"
+      >
+
+        🔊
+
+        Ouvir pronúncia
+
+      </button>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- =========================
+       FOOTER
+  ========================== -->
+
+  <footer>
+
+    <div class="footer-brand">
+
+      <div class="logo-icon">
+        F
+      </div>
+
+      <span>
+        Fluentemente
+      </span>
+
+    </div>
+
+
+    <p>
+      Aprenda idiomas através do conteúdo que você gosta.
+    </p>
+
+
+    <span class="copyright">
+      © 2026 Fluentemente
+    </span>
+
+  </footer>
+
+
+  <script src="script.js"></script>
+
 </body>
+
 </html>
