@@ -11,6 +11,28 @@
 
   <title>Fluentemente</title>
 
+  <!-- PROTEÇÃO DE LOGIN -->
+
+  <script>
+
+    const token =
+      localStorage.getItem(
+        "fluentemente_token"
+      );
+
+
+    if (!token) {
+
+      window.location.replace(
+        "/login.html"
+      );
+
+    }
+
+  </script>
+
+</head>
+  
   <link
     rel="preconnect"
     href="https://fonts.googleapis.com"
