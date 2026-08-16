@@ -1,5 +1,5 @@
 const API_URL =
-    "https://SEU-BACKEND.onrender.com";
+    "https://fluencesmente.onrender.com/";
 
 
 const form =
